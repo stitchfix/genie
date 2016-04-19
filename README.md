@@ -5,6 +5,8 @@
 
 ## Introduction
 
+This is stitchfix fork, note that for production we are using the releases/2.2.3 tag.
+
 Genie is a federated job execution engine developed by Netflix. Genie provides REST-ful APIs to run a variety of big
 data jobs like Hadoop, Pig, Hive, Spark, Presto, Sqoop and more. It also provides APIs for managing many distributed
 processing cluster configurations and the commands and applications which run on them.
