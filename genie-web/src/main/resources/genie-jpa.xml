@@ -66,9 +66,9 @@
     <beans profile="prod">
         <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
             <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
-            <property name="url" value="jdbc:mysql://127.0.0.1/genie"/>
-            <property name="username" value="root"/>
-            <property name="password" value=""/>
+            <property name="url" value="jdbc:mysql://genie2.c8hjvnh4cuqj.us-east-1.rds.amazonaws.com:3306/genie2"/>
+            <property name="username" value="admin"/>
+            <property name="password" value="100millionfixes"/>
 
             <property name="minIdle" value="5"/>
             <property name="maxIdle" value="20"/>
