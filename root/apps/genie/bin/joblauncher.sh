@@ -33,6 +33,8 @@ function checkError {
 function copyFiles {
     SOURCE=$1
     DESTINATION=$2
+	NEW_SOURCE=${SOURCE/file:\/\/\///}
+	NEW_DEST=${DESTINATION/file:\/\/\///}
 
     # number of retries for s3cp
     NUM_RETRIES=5
@@ -43,10 +45,15 @@ function copyFiles {
     # copy over the files to/from S3 - retry ${NUM_RETRIES} times
     i=0
     retVal=0
-    echo "$(date +"%F %T.%3N") Copying files ${SOURCE} to ${DESTINATION}"
+    echo "$(date +"%F %T.%3N") XXXXXXXXXXXXX  Copying files ${SOURCE} to ${DESTINATION}"
     while true
     do
-        ${TIMEOUT} ${COPY_COMMAND} ${SOURCE} ${DESTINATION}/
+	if [[ ${SOURCE} == 's3'*'/' ]]
+        then
+            $TIMEOUT aws s3 cp --recursive ${NEW_SOURCE} ${NEW_DEST}
+        else
+            $TIMEOUT aws s3 cp ${NEW_SOURCE} ${NEW_DEST}
+        fi
         retVal="$?"
         if [ "${retVal}" -eq 0 ]; then
             break
