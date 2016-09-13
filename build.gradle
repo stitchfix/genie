@@ -3,6 +3,8 @@ plugins {
     id 'nebula.provided-base' version '2.2.2'
 }
 
+version = "2.3.0"
+
 ext.githubProjectName = rootProject.name
 
 apply plugin: 'java'
