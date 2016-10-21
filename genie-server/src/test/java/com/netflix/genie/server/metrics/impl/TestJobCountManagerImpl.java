@@ -109,4 +109,16 @@ public class TestJobCountManagerImpl {
         );
         Assert.assertEquals(0, this.manager.getNumInstanceJobs(0L, 0L));
     }
+
+    /**
+     * Test getting total number of running jobs system wide.
+     *
+     * @throws GenieException For any problem if there is any error during this test
+     */
+    @Test
+    @DatabaseSetup("testNumInstanceJobs2.xml")
+    public void testGetNumRunningJobs() throws GenieException {
+        Assert.assertEquals(3, this.manager.getNumRunningJobs());
+    }
+
 }

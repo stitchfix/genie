@@ -132,18 +132,28 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
             LOG.info("Received job request:" + job);
         }
 
-        final Job forwardedJob = checkAbilityToRunOrForward(job);
+        // Queueing: make jobs queue up if over the system-wide limit.  Alternative to dealing
+        // with the HTTP 503's and the never-ending space/memory issues.
+        final int maxSystemJobs = CONF.getInt("com.netflix.genie.server.max.system.jobs", 1000);
 
-        if (forwardedJob != null) {
-            return forwardedJob;
+        if (this.jobCountManager.getNumRunningJobs() < maxSystemJobs) {
+            final Job forwardedJob = checkAbilityToRunOrForward(job);
+
+            if (forwardedJob != null) {
+                return forwardedJob;
+            }
+
+            // At this point we have established that the job can be run on this node.
+            // Before running we validate the job and save it in the db if it passes validation.
+            final Job savedJob = this.jobService.createJob(job);
+
+            // try to run the job - return success or error
+            return this.jobService.runJob(savedJob);
+        } else {
+            final Job savedJob = this.jobService.queueJob(job);
+            LOG.info("Queueing job with id: " + job.getId());
+            return savedJob;
         }
-
-        // At this point we have established that the job can be run on this node.
-        // Before running we validate the job and save it in the db if it passes validation.
-        final Job savedJob = this.jobService.createJob(job);
-
-        // try to run the job - return success or error
-        return this.jobService.runJob(savedJob);
     }
 
     /**
@@ -257,13 +267,18 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
         }
         job.setExitCode(exitCode);
 
+        // TODO: if we have queued jobs, submit the oldest one from the list before returning.
+        // Be careful of possible race conditions, we could do that be keeping the original instance
+        // that was assigned but that also has it's drawbacks.
+
         // We check if status code is killed. The kill thread sets this, but just to make sure we set
         // it here again to prevent a race condition problem. This just makes the status message as
         // killed and prevents some jobs that are killed being marked as failed
+        JobStatus returnStatus = JobStatus.INIT;
         if (exitCode == ProcessStatus.JOB_KILLED.getExitCode()) {
             LOG.debug("Process has been killed, therefore setting the appropriate status message.");
             job.setJobStatus(JobStatus.KILLED, "Job killed on user request");
-            return JobStatus.KILLED;
+            returnStatus = JobStatus.KILLED;
         } else {
             if (exitCode != ProcessStatus.SUCCESS.getExitCode()) {
                 // all other failures except s3 log archival failure
@@ -294,8 +309,31 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
 
             // set the updated time
             job.setUpdated(new Date());
-            return job.getStatus();
+            returnStatus = job.getStatus();
         }
+
+        // Attempt to release a queued job if one exists.  Although this is a side-effect, it's the
+        // best place to do it since we know we've got a slot free.  However we don't want this to
+        // stop finalizeJob so catch exceptions and log them here.  The alternative is to have a
+        // thread on each node that periodically releases queued jobs, but that creates additional
+        // complexity that we might not need or want.
+        try {
+            final int maxSystemJobs = CONF.getInt("com.netflix.genie.server.max.running.jobs", 1000);
+
+            if (this.jobCountManager.getNumRunningJobs() < maxSystemJobs) {
+                final Job queuedJob = this.jobService.getOldestQueuedJob();
+                if (queuedJob != null) {
+                    LOG.info("Releasing a queued job with id : " + queuedJob.getId());
+
+                    final Job releasedJob = this.jobService.unQueueJob(queuedJob.getId());
+                    this.jobService.runJob(releasedJob);
+                }
+            }
+        } catch (final GenieException ex) {
+            LOG.error("Exception when trying to unqueue a job, this will not fail finalizeJob.", ex);
+        }
+
+        return returnStatus;
     }
 
     private String getEndPoint() throws GenieException {

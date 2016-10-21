@@ -36,6 +36,7 @@ public class TestJobStatus {
     @Test
     public void testValidJobStatus() throws GeniePreconditionException {
         Assert.assertEquals(JobStatus.RUNNING, JobStatus.parse(JobStatus.RUNNING.name().toLowerCase()));
+        Assert.assertEquals(JobStatus.QUEUED, JobStatus.parse(JobStatus.QUEUED.name().toLowerCase()));
         Assert.assertEquals(JobStatus.FAILED, JobStatus.parse(JobStatus.FAILED.name().toLowerCase()));
         Assert.assertEquals(JobStatus.KILLED, JobStatus.parse(JobStatus.KILLED.name().toLowerCase()));
         Assert.assertEquals(JobStatus.INIT, JobStatus.parse(JobStatus.INIT.name().toLowerCase()));
