@@ -32,6 +32,10 @@ public enum JobStatus {
      */
     INIT,
     /**
+     * Job has been flagged in the DB to wait instead of running.
+     */
+    QUEUED,
+    /**
      * Job is now running.
      */
     RUNNING,
@@ -52,7 +56,7 @@ public enum JobStatus {
      * Parse job status.
      *
      * @param value string to parse/convert
-     * @return INIT, RUNNING, SUCCEEDED, KILLED, FAILED if match
+     * @return INIT, RUNNING, QUEUED, SUCCEEDED, KILLED, FAILED if match
      * @throws GeniePreconditionException if invalid value passed in
      */
     public static JobStatus parse(final String value) throws GeniePreconditionException {

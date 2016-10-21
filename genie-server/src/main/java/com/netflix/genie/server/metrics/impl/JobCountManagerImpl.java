@@ -136,6 +136,36 @@ public class JobCountManagerImpl implements JobCountManager {
         return query.getSingleResult().intValue();
     }
 
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public int getNumRunningJobs() throws GenieException {
+        LOG.debug("called");
+
+        final CriteriaBuilder cb = this.em.getCriteriaBuilder();
+        final CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+        final Root<Job> j = cq.from(Job.class);
+        cq.select(cb.count(j));
+        final Predicate runningStatus = cb.equal(j.get(Job_.status), JobStatus.RUNNING);
+        final Predicate initStatus = cb.equal(j.get(Job_.status), JobStatus.INIT);
+        final List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.or(runningStatus, initStatus));
+
+        // Avoid jobs with bad criteria not started correctly
+        predicates.add(cb.isNotNull(j.get(Job_.commandCriteriaString)));
+        predicates.add(cb.notEqual(j.get(Job_.commandCriteriaString), ""));
+
+        //documentation says that by default predicate array is conjuncted together
+        cq.where(predicates.toArray(new Predicate[predicates.size()]));
+        final TypedQuery<Long> query = this.em.createQuery(cq);
+
+        return query.getSingleResult().intValue();
+    }
+
+
     /**
      * {@inheritDoc}
      */

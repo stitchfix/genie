@@ -46,6 +46,7 @@ import javax.validation.ConstraintViolationException;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -143,6 +144,82 @@ public class JobServiceJPAImpl implements JobService {
         }
     }
 
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public Job queueJob(
+            @NotNull(message = "No job entered. Unable to queue.")
+            @Valid
+            final Job job
+    ) throws GenieException {
+        if (StringUtils.isNotEmpty(job.getId()) && this.jobRepo.exists(job.getId())) {
+            throw new GenieConflictException("A job with id " + job.getId() + " already exists. Unable to save.");
+        }
+        // validate parameters
+        job.setJobStatus(JobStatus.QUEUED, "Queuing job to wait");
+        job.setStarted(new Date());  // to track amount of time queued
+        LOG.debug("Queueing job with id " + job.getId());
+
+        // Validation successful. init state in DB - return if job already exists
+        try {
+            final Job persistedJob = this.jobRepo.save(job);
+            // set host name in case we want to track which host queued the job (will be reset when unqueued)
+            final String hostName = NetUtil.getHostName();
+            persistedJob.setHostName(hostName);
+
+            // increment number of submitted jobs as we have successfully
+            // persisted it in the database.
+            this.stats.incrGenieJobSubmissions();
+            return persistedJob;
+        } catch (final RuntimeException e) {
+            //This will catch runtime as well
+            LOG.error("Can't create entity in the database", e);
+            throw new GenieServerException(e);
+        }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public Job unQueueJob(
+            @NotNull(message = "No job entered. Unable to unqueue.")
+            @Valid
+            final String id
+    ) throws GenieException {
+        LOG.debug("called for id: " + id);
+
+        final Job job = this.jobRepo.findOne(id);
+        if (job != null) {
+            job.setJobStatus(JobStatus.INIT, "Initializing job");
+
+            final String hostName = NetUtil.getHostName();
+            job.setHostName(hostName);
+            job.setOutputURI(
+                    getEndPoint(hostName)
+                            + "/" + JOB_DIR_PREFIX
+                            + "/" + job.getId()
+            );
+            job.setKillURI(
+                    getEndPoint(hostName)
+                            + "/" + JOB_RESOURCE_PREFIX
+                            + "/" + job.getId()
+            );
+
+            job.setUpdated(new Date());
+            return job;
+        } else {
+            throw new GenieNotFoundException(
+                    "No job exists for id " + id + ". Unable to retrieve.");
+        }
+    }
+
+
     /**
      * {@inheritDoc}
      */
@@ -162,6 +239,46 @@ public class JobServiceJPAImpl implements JobService {
                     "No job exists for id " + id + ". Unable to retrieve.");
         }
     }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public Job getOldestQueuedJob() {
+        // queued status:
+        final Set<JobStatus> statuses = new HashSet<>();
+        statuses.add(JobStatus.QUEUED);
+
+        // ordering by created (ascending)
+        final Set<String> orderBys = new HashSet<>();
+        orderBys.add("created");
+
+        final List<Job> jobs = this.getJobs(
+                null,
+                null,
+                null,
+                statuses,
+                null,
+                null,
+                null,
+                null,
+                null,
+                0,
+                10,
+                false,
+                orderBys
+        );
+
+        Job foundJob = null;
+        if (!jobs.isEmpty()) {
+            foundJob = jobs.get(0);
+        }
+
+        return foundJob;
+    }
+
 
     /**
      * {@inheritDoc}
@@ -237,6 +354,7 @@ public class JobServiceJPAImpl implements JobService {
         final Job job = this.jobRepo.findOne(id);
         if (job != null) {
             job.setJobStatus(status, msg);
+            job.setUpdated(new Date());
         } else {
             throw new GenieNotFoundException("No job with id " + id + " exists");
         }
@@ -515,10 +633,10 @@ public class JobServiceJPAImpl implements JobService {
             this.jobManagerFactory.getJobManager(job).launch();
 
             // update entity in DB
-            // TODO This update runs into deadlock issue, either add manual retries
-            // or Spring retries.
+            // Note: originally had update here that runs into deadlock issue but removed it
+            // since significant changes don't happen until 'launch'.  If that doesn't work,
+            // either add manual retries or Spring retries.
             final Job runningJob = this.jobRepo.findOne(job.getId());
-            runningJob.setUpdated(new Date());
             return runningJob;
         } catch (final GenieException e) {
             LOG.error("Failed to run job: ", e);

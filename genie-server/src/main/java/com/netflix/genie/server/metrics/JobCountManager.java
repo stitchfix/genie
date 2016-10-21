@@ -66,6 +66,14 @@ public interface JobCountManager {
             final Long maxStartTime) throws GenieException;
 
     /**
+     * Get number of running jobs system wide.
+     *
+     * @return number of total running jobs in the system
+     * @throws GenieException if there is an error
+     */
+    int getNumRunningJobs() throws GenieException;
+
+    /**
      * Returns the most idle Genie instance (&lt; minJobThreshold running jobs),
      * if possible - else returns current instance.
      *

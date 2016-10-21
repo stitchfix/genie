@@ -50,6 +50,38 @@ public interface JobService {
             final Job job
     ) throws GenieException;
 
+
+    /**
+     * Validate the job and persist it with QUEUED status if it passes validation.
+     *
+     * This method is the alternative to createJob/runJob when we want to queue it.
+     *
+     * @param job The job to validate and maybe save
+     * @return The validated/saved job object
+     * @throws GenieException if there is an error
+     */
+    Job queueJob(
+            @NotNull(message = "No job entered. Unable to queue.")
+            @Valid
+            final Job job
+    ) throws GenieException;
+
+
+    /**
+     * Unqueue the job and prepare to run it, getting in into the same state as craeteJob so
+     * that runJob can be called.
+     *
+     * @param id The id of the job to unqueue and start to run
+     * @return The unqueued/validated/saved job object
+     * @throws GenieException if there is an error
+     */
+    Job unQueueJob(
+            @NotNull(message = "No job entered. Unable to unqueue.")
+            @Valid
+            final String id
+    ) throws GenieException;
+
+
     /**
      * Get job information for given job id.
      *
@@ -61,6 +93,18 @@ public interface JobService {
             @NotBlank(message = "No id entered. Unable to get job.")
             final String id
     ) throws GenieException;
+
+    /**
+     * Convenience method to get the oldest queued job in the system or null if
+     * none exist.
+     *
+     * Uses the getJobs call to get queued jobs ordered by creation time
+     * ascending.
+     *
+     * @return The oldest queued job or null if no queued jobs in the system
+     */
+    Job getOldestQueuedJob();
+
 
     /**
      * Get job info for given filter criteria.
