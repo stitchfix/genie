@@ -267,10 +267,6 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
         }
         job.setExitCode(exitCode);
 
-        // TODO: if we have queued jobs, submit the oldest one from the list before returning.
-        // Be careful of possible race conditions, we could do that be keeping the original instance
-        // that was assigned but that also has it's drawbacks.
-
         // We check if status code is killed. The kill thread sets this, but just to make sure we set
         // it here again to prevent a race condition problem. This just makes the status message as
         // killed and prevents some jobs that are killed being marked as failed
