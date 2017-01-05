@@ -142,10 +142,12 @@ public class YarnJobManagerImpl extends JobManagerImpl {
                         JobManagerImpl.SEMI_COLON)
         );
 
-        // if the cluster version is provided, overwrite the HADOOP_HOME
-        // environment variable
+        // Note: unfortunately they use the cluster version as the "hadoop version".  If it's
+        // null or set to 0.0.0 just use the default home which is usually a symlink to the
+        // current version.  Keep this ability in case we DO have a need to run multiple versions
+        // (not likely yet).
         String hadoopHome;
-        if (this.getCluster().getVersion() != null) {
+        if (this.getCluster().getVersion() != null && !this.getCluster().getVersion().equals("0.0.0")) {
             String hadoopVersion = this.getCluster().getVersion();
             LOG.debug("Hadoop Version of the cluster: " + hadoopVersion);
 
