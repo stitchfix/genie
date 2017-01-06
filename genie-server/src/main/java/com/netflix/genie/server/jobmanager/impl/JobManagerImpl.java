@@ -185,7 +185,7 @@ public class JobManagerImpl implements JobManager {
         // was launched)
         final int processId = this.job.getProcessHandle();
         if (processId > 0) {
-            LOG.info("Attempting to kill the process " + processId);
+            LOG.warn("Attempting to kill the process " + processId + " for job id " + this.job.getId());
             try {
                 final String genieHome = ConfigurationManager.getConfigInstance()
                         .getString("com.netflix.genie.server.sys.home");
@@ -203,19 +203,19 @@ public class JobManagerImpl implements JobManager {
                     counter++;
                     try {
                         returnCode = killProcessId.exitValue();
-                        LOG.info("Kill script finished");
+                        LOG.info("Kill script finished for job " + this.job.getId());
                         break;
                     } catch (IllegalThreadStateException e) {
-                        LOG.info("Kill script not finished yet. Will retry");
+                        LOG.warn("Kill script not finished yet on attempt " + counter);
                         try {
-                            Thread.sleep(1000);
+                            Thread.sleep(3000);
                         } catch (InterruptedException e1) {
-                            LOG.info("Sleep interrupted. Ignoring.");
+                            LOG.warn("Sleep interrupted. Ignoring.");
                         }
                     }
                 }
                 if (returnCode != 0) {
-                    throw new GenieServerException("Failed to kill the job");
+                    throw new GenieServerException("Failed to kill the job " + this.job.getId());
                 }
             } catch (final GenieException | IOException e) {
                 final String msg = "Failed to kill the job";
