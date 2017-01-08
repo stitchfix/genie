@@ -105,7 +105,7 @@ subprojects {
         contextUrl = 'http://artifactory.vertigo.stitchfix.com/artifactory'
         publish {
             repository {
-                repoKey = 'snapshots' // The Artifactory repository key to publish to
+                repoKey = 'releases' // The Artifactory repository key to publish to
                 username = "${artifactory_user}"
                 password = "${artifactory_password}"
             }
