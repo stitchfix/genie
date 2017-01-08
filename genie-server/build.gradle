@@ -1,7 +1,3 @@
-license {
-    excludes(["META-INF/resources/*"])
-}
-
 dependencies {
     /*******************************
      * Compile Dependencies

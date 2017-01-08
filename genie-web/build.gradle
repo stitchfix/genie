@@ -68,3 +68,15 @@ def env = project.hasProperty("env") ? project.getProperty("env") : "dev"
         System.clearProperty("archaius.deployment.environment")
     }
 }
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.web
+        }
+    }
+}
+
+artifactoryPublish {
+    dependsOn war
+}

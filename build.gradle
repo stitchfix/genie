@@ -1,23 +1,17 @@
 plugins {
-    id 'nebula.netflixoss' version '2.2.10'
     id 'nebula.provided-base' version '2.2.2'
+    id "com.jfrog.artifactory" version "4.4.0"
 }
+
 
 version = "2.3.2"
 
 ext.githubProjectName = rootProject.name
 
 apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.artifactory'
 
-release {
-    tagStrategy {
-        prefixNameWithV = false
-    }
-}
-
-nebulaRelease {
-    addReleaseBranchPattern(/(release(-|\/))?\d+(\.\d+)?\.(x|\d+)/)
-}
 
 allprojects {
     clean {
@@ -27,18 +21,20 @@ allprojects {
 }
 
 subprojects {
-    apply plugin: 'nebula.netflixoss'
     apply plugin: 'java'
     apply plugin: 'checkstyle'
     apply plugin: 'findbugs'
     apply plugin: 'pmd'
     apply plugin: 'jacoco'
     apply plugin: 'nebula.provided-base'
+    apply plugin: 'maven-publish'
+    apply plugin: 'com.jfrog.artifactory'
 
     sourceCompatibility = 1.7
     targetCompatibility = 1.7
 
     group = "com.netflix.${githubProjectName}"
+    version = rootProject.version
 
     repositories {
         jcenter()
@@ -50,6 +46,7 @@ subprojects {
     }
 
     dependencies {
+
         /*******************************
          * Compile Dependencies
          *******************************/
@@ -102,4 +99,28 @@ subprojects {
             xml.enabled = true
         }
     }
+
+    // Added to publish WAR to artifactory:
+    artifactory {
+        contextUrl = 'http://artifactory.vertigo.stitchfix.com/artifactory'
+        publish {
+            repository {
+                repoKey = 'snapshots' // The Artifactory repository key to publish to
+                username = "${artifactory_user}"
+                password = "${artifactory_password}"
+            }
+            defaults {
+                // Reference to Gradle publications defined in the build script.
+                // This is how we tell the Artifactory Plugin which artifacts should be
+                // published to Artifactory.
+                publications('mavenJava')
+                publishArtifacts = true
+                // Properties to be attached to the published artifacts.
+                properties = ['qa.level': 'basic', 'dev.team' : 'core']
+                // Publish generated POM files to Artifactory (true by default)
+                publishPom = true
+            }
+        }
+    }
+
 }
