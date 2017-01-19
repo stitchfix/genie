@@ -89,7 +89,7 @@
         <module name="FinalClass"/>
 
         <!-- Ensures that local variables that never get their values changed, must be declared final. -->
-        <module name="FinalLocalVariable"/>
+        <!-- <module name="FinalLocalVariable"/> -->
 
         <!-- Check that method/constructor/catch/foreach parameters are final. -->
         <module name="FinalParameters"/>
@@ -214,7 +214,7 @@
         <module name="OneStatementPerLine"/>
 
         <!-- Checks line wrapping for operators. -->
-        <module name="OperatorWrap"/>
+        <!-- <module name="OperatorWrap"/> -->
 
         <!-- Checks that package names conform to a format specified by the format property. -->
         <module name="PackageName"/>

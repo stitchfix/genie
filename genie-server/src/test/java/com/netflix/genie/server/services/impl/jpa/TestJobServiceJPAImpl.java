@@ -29,6 +29,7 @@ import com.netflix.genie.server.jobmanager.JobManager;
 import com.netflix.genie.server.jobmanager.JobManagerFactory;
 import com.netflix.genie.server.metrics.GenieNodeStatistics;
 import com.netflix.genie.server.repository.jpa.JobRepository;
+import com.netflix.genie.server.services.FileAttachmentStorage;
 import com.netflix.genie.server.services.JobService;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
@@ -223,7 +224,8 @@ public class TestJobServiceJPAImpl extends DBUnitTestBase {
         final JobRepository jobRepo = Mockito.mock(JobRepository.class);
         final GenieNodeStatistics stats = Mockito.mock(GenieNodeStatistics.class);
         final JobManagerFactory jobManagerFactory = Mockito.mock(JobManagerFactory.class);
-        final JobServiceJPAImpl impl = new JobServiceJPAImpl(jobRepo, stats, jobManagerFactory);
+        final FileAttachmentStorage jobAttachmentStorage = Mockito.mock(FileAttachmentStorage.class);
+        final JobServiceJPAImpl impl = new JobServiceJPAImpl(jobRepo, stats, jobManagerFactory, jobAttachmentStorage);
 
         final Job job = Mockito.mock(Job.class);
         Mockito.when(job.getId()).thenReturn(JOB_1_ID);
@@ -1215,7 +1217,8 @@ public class TestJobServiceJPAImpl extends DBUnitTestBase {
         final JobRepository jobRepo = Mockito.mock(JobRepository.class);
         final GenieNodeStatistics stats = Mockito.mock(GenieNodeStatistics.class);
         final JobManagerFactory jobManagerFactory = Mockito.mock(JobManagerFactory.class);
-        final JobServiceJPAImpl impl = new JobServiceJPAImpl(jobRepo, stats, jobManagerFactory);
+        final FileAttachmentStorage jobAttachmentStorage = Mockito.mock(FileAttachmentStorage.class);
+        final JobServiceJPAImpl impl = new JobServiceJPAImpl(jobRepo, stats, jobManagerFactory, jobAttachmentStorage);
 
         final Job job = Mockito.mock(Job.class);
         Mockito.when(job.getId()).thenReturn(JOB_1_ID);
@@ -1243,7 +1246,8 @@ public class TestJobServiceJPAImpl extends DBUnitTestBase {
         final JobRepository jobRepo = Mockito.mock(JobRepository.class);
         final GenieNodeStatistics stats = Mockito.mock(GenieNodeStatistics.class);
         final JobManagerFactory jobManagerFactory = Mockito.mock(JobManagerFactory.class);
-        final JobServiceJPAImpl impl = new JobServiceJPAImpl(jobRepo, stats, jobManagerFactory);
+        final FileAttachmentStorage jobAttachmentStorage = Mockito.mock(FileAttachmentStorage.class);
+        final JobServiceJPAImpl impl = new JobServiceJPAImpl(jobRepo, stats, jobManagerFactory, jobAttachmentStorage);
 
         final Job job = Mockito.mock(Job.class);
         Mockito.when(job.getId()).thenReturn(JOB_1_ID);

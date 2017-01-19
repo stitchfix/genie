@@ -40,6 +40,8 @@
 
     <!-- Services -->
     <bean id="clusterLoadBalancer" class="com.netflix.genie.server.services.impl.RandomizedClusterLoadBalancerImpl"/>
+    <bean id="fileAttachmentStorage" class="com.netflix.genie.server.services.impl.s3.FileAttachmentStorageS3"/>
+
     <bean id="applicationService" class="com.netflix.genie.server.services.impl.jpa.ApplicationConfigServiceJPAImpl">
         <constructor-arg name="applicationRepo" ref="applicationRepository"/>
         <constructor-arg name="commandRepo" ref="commandRepository"/>
@@ -65,6 +67,7 @@
         <constructor-arg name="jobManagerFactory" ref="jobManagerFactory"/>
         <constructor-arg name="jobRepo" ref="jobRepository"/>
         <constructor-arg name="stats" ref="genieNodeStatistics"/>
+        <constructor-arg name="jobAttachmentStorage" ref="fileAttachmentStorage"/>
     </bean>
 
     <!-- Job Management -->

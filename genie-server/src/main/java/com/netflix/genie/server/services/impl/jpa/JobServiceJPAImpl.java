@@ -24,12 +24,14 @@ import com.netflix.genie.common.exceptions.GenieConflictException;
 import com.netflix.genie.common.exceptions.GenieNotFoundException;
 import com.netflix.genie.common.exceptions.GeniePreconditionException;
 import com.netflix.genie.common.exceptions.GenieServerException;
+import com.netflix.genie.common.model.FileAttachment;
 import com.netflix.genie.common.model.Job;
 import com.netflix.genie.common.model.JobStatus;
 import com.netflix.genie.server.jobmanager.JobManagerFactory;
 import com.netflix.genie.server.metrics.GenieNodeStatistics;
 import com.netflix.genie.server.repository.jpa.JobRepository;
 import com.netflix.genie.server.repository.jpa.JobSpecs;
+import com.netflix.genie.server.services.FileAttachmentStorage;
 import com.netflix.genie.server.services.JobService;
 import com.netflix.genie.server.util.NetUtil;
 import org.apache.commons.configuration.AbstractConfiguration;
@@ -82,6 +84,7 @@ public class JobServiceJPAImpl implements JobService {
     private final GenieNodeStatistics stats;
     private final JobRepository jobRepo;
     private final JobManagerFactory jobManagerFactory;
+    private final FileAttachmentStorage jobAttachmentStorage;
 
     /**
      * Constructor.
@@ -89,15 +92,18 @@ public class JobServiceJPAImpl implements JobService {
      * @param jobRepo           The job repository to use.
      * @param stats             the GenieNodeStatistics object
      * @param jobManagerFactory The the job manager factory to use
+     * @param jobAttachmentStorage The attachment storage to use
      */
     public JobServiceJPAImpl(
             final JobRepository jobRepo,
             final GenieNodeStatistics stats,
-            final JobManagerFactory jobManagerFactory
-    ) {
+            final JobManagerFactory jobManagerFactory,
+            final FileAttachmentStorage jobAttachmentStorage
+            ) {
         this.jobRepo = jobRepo;
         this.stats = stats;
         this.jobManagerFactory = jobManagerFactory;
+        this.jobAttachmentStorage = jobAttachmentStorage;
     }
 
     /**
@@ -165,6 +171,10 @@ public class JobServiceJPAImpl implements JobService {
 
         // Validation successful. init state in DB - return if job already exists
         try {
+            // Save attachments since not persisted in the DB
+            this.jobAttachmentStorage.storeAttachments(job.getId(), job.getAttachments());
+
+            // Now save job
             final Job persistedJob = this.jobRepo.save(job);
             // set host name in case we want to track which host queued the job (will be reset when unqueued)
             final String hostName = NetUtil.getHostName();
@@ -197,6 +207,10 @@ public class JobServiceJPAImpl implements JobService {
         final Job job = this.jobRepo.findOne(id);
         if (job != null) {
             job.setJobStatus(JobStatus.INIT, "Initializing job");
+
+            // Attachment recovery:
+            final Set<FileAttachment> foundAttachments = this.jobAttachmentStorage.unstoreAttachments(id);
+            job.setAttachments(foundAttachments);
 
             final String hostName = NetUtil.getHostName();
             job.setHostName(hostName);
