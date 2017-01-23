@@ -167,15 +167,16 @@ public class JobServiceJPAImpl implements JobService {
         // validate parameters
         job.setJobStatus(JobStatus.QUEUED, "Queuing job to wait");
         job.setStarted(new Date());  // to track amount of time queued
-        LOG.debug("Queueing job with id " + job.getId());
 
         // Validation successful. init state in DB - return if job already exists
         try {
-            // Save attachments since not persisted in the DB
-            this.jobAttachmentStorage.storeAttachments(job.getId(), job.getAttachments());
-
             // Now save job
             final Job persistedJob = this.jobRepo.save(job);
+            LOG.info("Queueing job with id " + persistedJob.getId());
+            // Save attachments since not persisted in the DB.  Need to do after
+            // the save so that we have the job Id.
+            this.jobAttachmentStorage.storeAttachments(persistedJob.getId(), persistedJob.getAttachments());
+
             // set host name in case we want to track which host queued the job (will be reset when unqueued)
             final String hostName = NetUtil.getHostName();
             persistedJob.setHostName(hostName);

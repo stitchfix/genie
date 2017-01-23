@@ -151,7 +151,7 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
             return this.jobService.runJob(savedJob);
         } else {
             final Job savedJob = this.jobService.queueJob(job);
-            LOG.info("Queueing job with id: " + job.getId());
+            LOG.info("Queued and saved job with id: " + job.getId());
             return savedJob;
         }
     }

@@ -36,9 +36,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -194,7 +198,7 @@ public class JobManagerImpl implements JobManager {
                     LOG.error(msg);
                     throw new GenieServerException(msg);
                 }
-                final Process killProcessId = Runtime.getRuntime().exec(
+                final Process killProcessObj = Runtime.getRuntime().exec(
                         genieHome + File.separator + "jobkill.sh " + processId);
 
                 int returnCode = 1;
@@ -202,7 +206,7 @@ public class JobManagerImpl implements JobManager {
                 while (counter < 3) {
                     counter++;
                     try {
-                        returnCode = killProcessId.exitValue();
+                        returnCode = killProcessObj.exitValue();
                         LOG.info("Kill script finished for job " + this.job.getId());
                         break;
                     } catch (IllegalThreadStateException e) {
@@ -214,16 +218,33 @@ public class JobManagerImpl implements JobManager {
                         }
                     }
                 }
+
+                // Log output from the process
+                InputStream processOutput = killProcessObj.getInputStream();
+                if (processOutput != null) {
+                    LOG.info("Kill process output:");
+                    try (BufferedReader in = new BufferedReader(new InputStreamReader(processOutput, "UTF-8"))) {
+                        String line = null;
+                        while ((line = in.readLine()) != null) {
+                            LOG.info(line);
+                        }
+                    } catch (UnsupportedEncodingException uex) {
+                        LOG.warn("Could not log process output due to unsupported coding exception.", uex);
+                    } catch (IOException iox) {
+                        LOG.warn("Could not log process output due to exception", iox);
+                    }
+                }
+
                 if (returnCode != 0) {
                     throw new GenieServerException("Failed to kill the job " + this.job.getId());
                 }
             } catch (final GenieException | IOException e) {
-                final String msg = "Failed to kill the job";
+                final String msg = "Failed to kill the job due to an exception.";
                 LOG.error(msg, e);
                 throw new GenieServerException(msg, e);
             }
         } else {
-            final String msg = "Could not get process id";
+            final String msg = "Could not get process id, so could not kill job";
             LOG.error(msg);
             throw new GenieServerException(msg);
         }
