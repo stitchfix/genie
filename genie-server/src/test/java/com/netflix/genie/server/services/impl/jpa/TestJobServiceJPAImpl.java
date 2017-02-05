@@ -314,6 +314,34 @@ public class TestJobServiceJPAImpl extends DBUnitTestBase {
 
 
     /**
+     * Test queueing and releasing the oldest job.
+     *
+     * @throws GenieException For any problem
+     */
+    @Test
+    public void testQueueAndUnqueueOldestJob() throws GenieException {
+        // Oldest queued job from test data:
+        final Job job = this.service.getJob("job31");
+        Assert.assertNotNull(job.getId());
+        Assert.assertEquals(JobStatus.QUEUED, job.getStatus());
+
+        // Try to unqueue the oldest job, it should look like the job above
+        final Job unqueued = this.service.unQueueOldestJob();
+        Assert.assertNotNull(unqueued.getId());
+        Assert.assertEquals(job.getName(), unqueued.getName());
+        Assert.assertEquals(job.getUser(), unqueued.getUser());
+        Assert.assertEquals(job.getVersion(), unqueued.getVersion());
+        Assert.assertEquals(job.getCommandArgs(), unqueued.getCommandArgs());
+        Assert.assertEquals(job.getClusterCriterias().size(), unqueued.getClusterCriterias().size());
+        Assert.assertEquals(job.getCommandCriteria().size(), unqueued.getCommandCriteria().size());
+        Assert.assertEquals(job.getCommandCriteria().size(), unqueued.getCommandCriteriaString().split(",").length);
+        Assert.assertEquals(JobStatus.INIT, unqueued.getStatus());
+        Assert.assertNotNull(unqueued.getOutputURI());
+        Assert.assertNotNull(unqueued.getKillURI());
+    }
+
+
+    /**
      * Test the get job function.
      *
      * @throws GenieException For any problem

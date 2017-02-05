@@ -198,6 +198,22 @@ public class JobServiceJPAImpl implements JobService {
      */
     @Override
     @Transactional
+    public Job unQueueOldestJob() throws GenieException {
+        final Job job = this.getOldestQueuedJob();
+        Job releasedJob = null;
+        if (job != null) {
+            releasedJob = this.unQueueJob(job.getId());
+        }
+
+        return releasedJob;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
     public Job unQueueJob(
             @NotNull(message = "No job entered. Unable to unqueue.")
             @Valid
@@ -208,10 +224,6 @@ public class JobServiceJPAImpl implements JobService {
         final Job job = this.jobRepo.findOne(id);
         if (job != null) {
             job.setJobStatus(JobStatus.INIT, "Initializing job");
-
-            // Attachment recovery:
-            final Set<FileAttachment> foundAttachments = this.jobAttachmentStorage.unstoreAttachments(id);
-            job.setAttachments(foundAttachments);
 
             final String hostName = NetUtil.getHostName();
             job.setHostName(hostName);
@@ -232,6 +244,27 @@ public class JobServiceJPAImpl implements JobService {
             throw new GenieNotFoundException(
                     "No job exists for id " + id + ". Unable to retrieve.");
         }
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Job prepUnqueuedJob(
+            @NotNull(message = "No job entered. Unable to prepare.")
+            @Valid
+            final Job job
+    ) throws GenieException {
+        if (job.getId() == null) {
+            throw new GenieNotFoundException("prepUnqueuedJob : job has null id, not expected.");
+        }
+
+        // Attachment recovery:
+        final Set<FileAttachment> foundAttachments = this.jobAttachmentStorage.unstoreAttachments(job.getId());
+        job.setAttachments(foundAttachments);
+
+        return job;
     }
 
 

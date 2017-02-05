@@ -50,6 +50,9 @@
         <aop:advisor advice-ref="operationRetryAdvice"
                      pointcut="execution(* com.netflix.genie.server.services.impl.jpa.JobServiceJPAImpl.setUpdateTime(..))"
                      order="-1"/>
+        <aop:advisor advice-ref="operationRetryAdvice"
+                     pointcut="execution(* com.netflix.genie.server.services.impl.jpa.JobServiceJPAImpl.unQueueOldestJob())"
+                     order="-1"/>
     </aop:config>
 
 </beans>

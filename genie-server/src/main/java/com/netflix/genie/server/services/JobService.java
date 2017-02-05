@@ -68,7 +68,21 @@ public interface JobService {
 
 
     /**
-     * Unqueue the job and prepare to run it, getting in into the same state as craeteJob so
+     * Find the oldest job and unqueue it specifically to be run, returning the job or null if there
+     * are no queued jobs to release.
+     *
+     * The intent of this is to run the simplest case of finding and releasing the oldest queued
+     * job in a single transaction.  If no more sophisticated logic is needed to determine the next
+     * job to run this method handles that simple case.
+     *
+     * @return The unqueued/validated/saved job object or null if no jobs are queued
+     * @throws GenieException if there is an error
+     */
+    Job unQueueOldestJob() throws GenieException;
+
+
+    /**
+     * Unqueue a specific job and prepare to run it, getting in into the same state as createJob so
      * that runJob can be called.
      *
      * @param id The id of the job to unqueue and start to run
@@ -83,6 +97,22 @@ public interface JobService {
 
 
     /**
+     * Given a job that has been queued and released, execute any other steps to prepare it to run
+     * that occur after the DB transaction is completed.  Recover its attachments and return the job
+     * with its attachments ready to run.  Separated out from the DB transaction
+     *
+     * @param job The unqueued job
+     * @return The updated job ready to run
+     * @throws GenieException if there is an error
+     */
+    Job prepUnqueuedJob(
+            @NotNull(message = "No job entered. Unable to prepare.")
+            @Valid
+            final Job job
+    ) throws GenieException;
+
+
+    /**
      * Get job information for given job id.
      *
      * @param id id of job to look up
@@ -93,6 +123,7 @@ public interface JobService {
             @NotBlank(message = "No id entered. Unable to get job.")
             final String id
     ) throws GenieException;
+
 
     /**
      * Convenience method to get the oldest queued job in the system or null if

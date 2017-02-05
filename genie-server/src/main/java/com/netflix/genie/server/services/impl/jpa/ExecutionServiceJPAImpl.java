@@ -250,14 +250,61 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
      * {@inheritDoc}
      */
     @Override
+    public JobStatus finalizeJob(
+            @NotBlank(message = "No job id entered. Unable to finalize.")
+            final String id,
+            final int exitCode
+    ) throws GenieException {
+        // Finalize the job status of the completed job in its own transaction
+        JobStatus returnStatus = this.finalizeJobStatus(id, exitCode);
+
+        // Attempt to release a queued job if one exists.  Although this is a side-effect, it's the
+        // best place to do it since we know we've got a slot free.  However we don't want this to
+        // stop finalizeJob so catch exceptions and log them here.  The alternative is to have a
+        // thread on each node that periodically releases queued jobs, but that creates additional
+        // complexity that we might not need or want.
+        try {
+            final int maxSystemJobs = CONF.getInt("com.netflix.genie.server.max.running.jobs", 1000);
+
+            if (this.jobCountManager.getNumRunningJobs() < maxSystemJobs) {
+                // Retrieve and release a queued job in one transaction
+                final Job releasedJob = this.jobService.unQueueOldestJob();
+                if (releasedJob != null) {
+                    LOG.info("Found and released oldest queued job with id : " + releasedJob.getId());
+
+                    // Perform other prep (attachments, etc) that occur outside of a DB transaction then run job
+                    final Job jobToRun = this.jobService.prepUnqueuedJob(releasedJob);
+                    // Finally, run the job (separate transaction)
+                    this.jobService.runJob(jobToRun);
+                }
+            }
+        } catch (final GenieException ex) {
+            LOG.error("Exception when trying to unqueue a job, this will not fail finalizeJob.", ex);
+        }
+
+        return returnStatus;
+    }
+
+
+    /**
+     * Transactional method to finalize the job status in finalizeJob.
+     *
+     * Broke this out of finalizeJob to have this in its own transaction separated from the follow up
+     * step to potentially release a queued job.
+     *
+     * @param id
+     * @param exitCode
+     * @return
+     * @throws GenieException Exception thrown for any errors
+     */
     @Transactional(
             rollbackFor = {
                     GenieException.class,
                     ConstraintViolationException.class
             }
     )
-    public JobStatus finalizeJob(
-            @NotBlank(message = "No job id entered. Unable to finalize.")
+    protected JobStatus finalizeJobStatus(
+            @NotBlank(message = "No job id entered. Unable to finalize its status.")
             final String id,
             final int exitCode
     ) throws GenieException {
@@ -278,22 +325,19 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
         } else {
             if (exitCode != ProcessStatus.SUCCESS.getExitCode()) {
                 // all other failures except s3 log archival failure
-                LOG.error("Failed to execute job, exit code: "
-                        + exitCode);
+                LOG.error("Failed to execute job, exit code: " + exitCode);
                 String errMsg;
                 try {
                     errMsg = ProcessStatus.parse(exitCode).getMessage();
                 } catch (final GenieException ge) {
                     errMsg = "Please look at job's stderr for more details";
                 }
-                job.setJobStatus(JobStatus.FAILED,
-                        "Failed to execute job, Error Message: " + errMsg);
+                job.setJobStatus(JobStatus.FAILED, "Failed to execute job, Error Message: " + errMsg);
                 // incr counter for failed jobs
                 this.stats.incrGenieFailedJobs();
             } else {
                 // success
-                job.setJobStatus(JobStatus.SUCCEEDED,
-                        "Job finished successfully");
+                job.setJobStatus(JobStatus.SUCCEEDED, "Job finished successfully");
                 // incr counter for successful jobs
                 this.stats.incrGenieSuccessfulJobs();
             }
@@ -308,29 +352,9 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
             returnStatus = job.getStatus();
         }
 
-        // Attempt to release a queued job if one exists.  Although this is a side-effect, it's the
-        // best place to do it since we know we've got a slot free.  However we don't want this to
-        // stop finalizeJob so catch exceptions and log them here.  The alternative is to have a
-        // thread on each node that periodically releases queued jobs, but that creates additional
-        // complexity that we might not need or want.
-        try {
-            final int maxSystemJobs = CONF.getInt("com.netflix.genie.server.max.running.jobs", 1000);
-
-            if (this.jobCountManager.getNumRunningJobs() < maxSystemJobs) {
-                final Job queuedJob = this.jobService.getOldestQueuedJob();
-                if (queuedJob != null) {
-                    LOG.info("Releasing a queued job with id : " + queuedJob.getId());
-
-                    final Job releasedJob = this.jobService.unQueueJob(queuedJob.getId());
-                    this.jobService.runJob(releasedJob);
-                }
-            }
-        } catch (final GenieException ex) {
-            LOG.error("Exception when trying to unqueue a job, this will not fail finalizeJob.", ex);
-        }
-
         return returnStatus;
     }
+
 
     private String getEndPoint() throws GenieException {
         return "http://" + NetUtil.getHostName() + ":" + SERVER_PORT;

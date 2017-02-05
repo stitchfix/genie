@@ -433,6 +433,16 @@ public class JobManagerImpl implements JobManager {
                 processBuilder.environment().put("S3_ARCHIVE_LOCATION", s3ArchiveLocation);
             }
         }
+
+        // Set other control variables when they are non blank:
+        final String maxDiskPct = ConfigurationManager
+                .getConfigInstance()
+                .getString("com.netflix.genie.server.max.disk.percent", "100");
+        processBuilder.environment().put("MAX_DISK_PERCENT", maxDiskPct);
+        final String minMemoryMb = ConfigurationManager
+                .getConfigInstance()
+                .getString("com.netflix.genie.server.min.memory.mb", "0");
+        processBuilder.environment().put("MIN_MEMORY_MB", minMemoryMb);
     }
 
     /**
