@@ -167,6 +167,7 @@ public class JobServiceJPAImpl implements JobService {
         // validate parameters
         job.setJobStatus(JobStatus.QUEUED, "Queuing job to wait");
         job.setStarted(new Date());  // to track amount of time queued
+        job.setUpdated(new Date());
 
         // Validation successful. init state in DB - return if job already exists
         try {
