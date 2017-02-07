@@ -357,4 +357,18 @@ public interface JobService {
             @Valid
             final Job job
     ) throws GenieException;
+
+    /**
+     * Finalize the status of a job.
+     *
+     * @param id       The id of the job to finalize.
+     * @param exitCode The exit code of the job process.
+     * @return The job status.
+     * @throws GenieException if there is an error
+     */
+    JobStatus finalizeJobStatus(
+            @NotBlank(message = "No job id entered. Unable to finalize job status.")
+            final String id,
+            final int exitCode
+    ) throws GenieException;
 }

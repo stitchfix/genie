@@ -71,7 +71,10 @@ public interface ExecutionService {
     int markZombies();
 
     /**
-     * Finalize the status of a job.
+     * Finalize a job, including a call to finalizeJobStatus.
+     *
+     * This is the main method to do other tasks and also wrap finalizeJobStatus.
+     * This allows some transaction separation.
      *
      * @param id       The id of the job to finalize.
      * @param exitCode The exit code of the job process.

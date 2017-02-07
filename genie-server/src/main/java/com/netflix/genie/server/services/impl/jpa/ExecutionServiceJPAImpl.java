@@ -255,8 +255,15 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
             final String id,
             final int exitCode
     ) throws GenieException {
+        // NOTES: breaking the parts of this up into their own transaction took some careful
+        // steps: 1) can't call protected/private methods as they are not made transactional, and
+        // 2) calling methods on the same class doesn't go through Spring's proxied objects and so
+        // transactions are not enforced.  Solution was to pull out finalizeJobStatus and move
+        // it to the JobService instead.  Now this method is analogous to submitJob, as it
+        // also calls transactional methods on JobService
+
         // Finalize the job status of the completed job in its own transaction
-        JobStatus returnStatus = this.finalizeJobStatus(id, exitCode);
+        JobStatus returnStatus = this.jobService.finalizeJobStatus(id, exitCode);
 
         // Attempt to release a queued job if one exists.  Although this is a side-effect, it's the
         // best place to do it since we know we've got a slot free.  However we don't want this to
@@ -280,76 +287,6 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
             }
         } catch (final GenieException ex) {
             LOG.error("Exception when trying to unqueue a job, this will not fail finalizeJob.", ex);
-        }
-
-        return returnStatus;
-    }
-
-
-    /**
-     * Transactional method to finalize the job status in finalizeJob.
-     *
-     * Broke this out of finalizeJob to have this in its own transaction separated from the follow up
-     * step to potentially release a queued job.
-     *
-     * @param id
-     * @param exitCode
-     * @return
-     * @throws GenieException Exception thrown for any errors
-     */
-    @Transactional(
-            rollbackFor = {
-                    GenieException.class,
-                    ConstraintViolationException.class
-            }
-    )
-    protected JobStatus finalizeJobStatus(
-            @NotBlank(message = "No job id entered. Unable to finalize its status.")
-            final String id,
-            final int exitCode
-    ) throws GenieException {
-        final Job job = this.jobRepo.findOne(id);
-        if (job == null) {
-            throw new GenieNotFoundException("No job with id " + id + " exists");
-        }
-        job.setExitCode(exitCode);
-
-        // We check if status code is killed. The kill thread sets this, but just to make sure we set
-        // it here again to prevent a race condition problem. This just makes the status message as
-        // killed and prevents some jobs that are killed being marked as failed
-        JobStatus returnStatus = JobStatus.INIT;
-        if (exitCode == ProcessStatus.JOB_KILLED.getExitCode()) {
-            LOG.debug("Process has been killed, therefore setting the appropriate status message.");
-            job.setJobStatus(JobStatus.KILLED, "Job killed on user request");
-            returnStatus = JobStatus.KILLED;
-        } else {
-            if (exitCode != ProcessStatus.SUCCESS.getExitCode()) {
-                // all other failures except s3 log archival failure
-                LOG.error("Failed to execute job, exit code: " + exitCode);
-                String errMsg;
-                try {
-                    errMsg = ProcessStatus.parse(exitCode).getMessage();
-                } catch (final GenieException ge) {
-                    errMsg = "Please look at job's stderr for more details";
-                }
-                job.setJobStatus(JobStatus.FAILED, "Failed to execute job, Error Message: " + errMsg);
-                // incr counter for failed jobs
-                this.stats.incrGenieFailedJobs();
-            } else {
-                // success
-                job.setJobStatus(JobStatus.SUCCEEDED, "Job finished successfully");
-                // incr counter for successful jobs
-                this.stats.incrGenieSuccessfulJobs();
-            }
-
-            // set the archive location - if needed
-            if (!job.isDisableLogArchival()) {
-                job.setArchiveLocation(NetUtil.getArchiveURI(job.getId()));
-            }
-
-            // set the updated time
-            job.setUpdated(new Date());
-            returnStatus = job.getStatus();
         }
 
         return returnStatus;

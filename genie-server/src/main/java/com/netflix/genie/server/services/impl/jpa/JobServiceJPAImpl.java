@@ -27,6 +27,7 @@ import com.netflix.genie.common.exceptions.GenieServerException;
 import com.netflix.genie.common.model.FileAttachment;
 import com.netflix.genie.common.model.Job;
 import com.netflix.genie.common.model.JobStatus;
+import com.netflix.genie.common.util.ProcessStatus;
 import com.netflix.genie.server.jobmanager.JobManagerFactory;
 import com.netflix.genie.server.metrics.GenieNodeStatistics;
 import com.netflix.genie.server.repository.jpa.JobRepository;
@@ -696,6 +697,68 @@ public class JobServiceJPAImpl implements JobService {
             this.stats.incrGenieFailedJobs();
             throw e;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(
+            rollbackFor = {
+                    GenieException.class,
+                    ConstraintViolationException.class
+            }
+    )
+    public JobStatus finalizeJobStatus(
+            @NotBlank(message = "No job id entered. Unable to finalize job status.")
+            final String id,
+            final int exitCode
+    ) throws GenieException {
+        final Job job = this.jobRepo.findOne(id);
+        if (job == null) {
+            throw new GenieNotFoundException("No job with id " + id + " exists");
+        }
+        job.setExitCode(exitCode);
+
+        // We check if status code is killed. The kill thread sets this, but just to make sure we set
+        // it here again to prevent a race condition problem. This just makes the status message as
+        // killed and prevents some jobs that are killed being marked as failed
+        JobStatus returnStatus = JobStatus.INIT;
+        if (exitCode == ProcessStatus.JOB_KILLED.getExitCode()) {
+            LOG.debug("Process has been killed, therefore setting the appropriate status message.");
+            job.setJobStatus(JobStatus.KILLED, "Job killed on user request");
+            returnStatus = JobStatus.KILLED;
+        } else {
+            if (exitCode != ProcessStatus.SUCCESS.getExitCode()) {
+                // all other failures except s3 log archival failure
+                LOG.error("Failed to execute job, exit code: " + exitCode);
+                String errMsg;
+                try {
+                    errMsg = ProcessStatus.parse(exitCode).getMessage();
+                } catch (final GenieException ge) {
+                    errMsg = "Please look at job's stderr for more details";
+                }
+                job.setJobStatus(JobStatus.FAILED, "Failed to execute job, Error Message: " + errMsg);
+                // incr counter for failed jobs
+                this.stats.incrGenieFailedJobs();
+            } else {
+                // success
+                job.setJobStatus(JobStatus.SUCCEEDED, "Job finished successfully");
+                // incr counter for successful jobs
+                this.stats.incrGenieSuccessfulJobs();
+            }
+
+            // set the archive location - if needed
+            if (!job.isDisableLogArchival()) {
+                job.setArchiveLocation(NetUtil.getArchiveURI(job.getId()));
+            }
+
+            // set the updated time
+            job.setUpdated(new Date());
+            returnStatus = job.getStatus();
+        }
+
+        return returnStatus;
     }
 
     private String getEndPoint(final String hostName) throws GenieException {
