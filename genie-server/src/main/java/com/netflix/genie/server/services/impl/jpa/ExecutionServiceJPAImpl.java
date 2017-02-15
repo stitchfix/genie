@@ -271,8 +271,9 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
         // thread on each node that periodically releases queued jobs, but that creates additional
         // complexity that we might not need or want.
         try {
-            final int maxSystemJobs = CONF.getInt("com.netflix.genie.server.max.running.jobs", 1000);
+            final int maxSystemJobs = CONF.getInt("com.netflix.genie.server.max.system.jobs", 1000);
 
+            LOG.debug("Checking if we should release a queued job.");
             if (this.jobCountManager.getNumRunningJobs() < maxSystemJobs) {
                 // Retrieve and release a queued job in one transaction
                 final Job releasedJob = this.jobService.unQueueOldestJob();

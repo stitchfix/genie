@@ -202,6 +202,13 @@ public class JobServiceJPAImpl implements JobService {
     @Transactional
     public Job unQueueOldestJob() throws GenieException {
         final Job job = this.getOldestQueuedJob();
+        if (LOG.isDebugEnabled()) {
+            if (job != null) {
+                LOG.debug("Found the oldest queued job to release.");
+            } else {
+                LOG.debug("Oldest queued job call returns null -- no queued jobs.");
+            }
+        }
         Job releasedJob = null;
         if (job != null) {
             releasedJob = this.unQueueJob(job.getId());
@@ -221,7 +228,7 @@ public class JobServiceJPAImpl implements JobService {
             @Valid
             final String id
     ) throws GenieException {
-        LOG.debug("called for id: " + id);
+        LOG.debug("Unqueueing job with id: " + id);
 
         final Job job = this.jobRepo.findOne(id);
         if (job != null) {
@@ -719,19 +726,20 @@ public class JobServiceJPAImpl implements JobService {
             throw new GenieNotFoundException("No job with id " + id + " exists");
         }
         job.setExitCode(exitCode);
+        LOG.debug("Finalizing job status: " + id);
 
         // We check if status code is killed. The kill thread sets this, but just to make sure we set
         // it here again to prevent a race condition problem. This just makes the status message as
         // killed and prevents some jobs that are killed being marked as failed
         JobStatus returnStatus = JobStatus.INIT;
         if (exitCode == ProcessStatus.JOB_KILLED.getExitCode()) {
-            LOG.debug("Process has been killed, therefore setting the appropriate status message.");
+            LOG.info("Job has been killed : " + id);
             job.setJobStatus(JobStatus.KILLED, "Job killed on user request");
             returnStatus = JobStatus.KILLED;
         } else {
             if (exitCode != ProcessStatus.SUCCESS.getExitCode()) {
                 // all other failures except s3 log archival failure
-                LOG.error("Failed to execute job, exit code: " + exitCode);
+                LOG.error("Job " + id + " failed with exit code: " + exitCode);
                 String errMsg;
                 try {
                     errMsg = ProcessStatus.parse(exitCode).getMessage();
@@ -742,6 +750,7 @@ public class JobServiceJPAImpl implements JobService {
                 // incr counter for failed jobs
                 this.stats.incrGenieFailedJobs();
             } else {
+                LOG.info("Job completed successfully : " + id);
                 // success
                 job.setJobStatus(JobStatus.SUCCEEDED, "Job finished successfully");
                 // incr counter for successful jobs
