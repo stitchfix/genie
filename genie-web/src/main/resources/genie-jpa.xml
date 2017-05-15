@@ -53,7 +53,8 @@
     <beans profile="dev">
         <jdbc:embedded-database id="dataSource" type="HSQL"/>
     </beans>
-    
+
+    <!-- TODO: turn 'test' into a configuration for the staging env and figure out how to switch when we deploy to staging! -->
     <beans profile="test">
         <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
             <property name="driverClassName" value="org.apache.derby.jdbc.EmbeddedDriver" />
@@ -66,7 +67,8 @@
     <beans profile="prod">
         <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
             <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
-            <property name="url" value="jdbc:mysql://genie2.c8hjvnh4cuqj.us-east-1.rds.amazonaws.com:3306/genie2"/>
+            <!-- Note: genie-prod is the DB in the prod VPC: -->
+            <property name="url" value="jdbc:mysql://genie-prod.c8hjvnh4cuqj.us-east-1.rds.amazonaws.com:3306/genie2"/>
             <property name="username" value="admin"/>
             <property name="password" value="100millionfixes"/>
 
