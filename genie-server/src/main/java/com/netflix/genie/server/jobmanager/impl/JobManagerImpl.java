@@ -397,6 +397,11 @@ public class JobManagerImpl implements JobManager {
         processBuilder.environment().put("USER_NAME", this.job.getUser());
 
         processBuilder.environment().put("GROUP_NAME", this.getGroupName());
+        // Document any job tags:
+        Set<String> jobTagSet = this.job.getTags();
+        if (!jobTagSet.isEmpty()) {
+            processBuilder.environment().put("CURRENT_JOB_TAGS", convertCollectionToString(jobTagSet));
+        }
 
         // set the java home
         final String javaHome = ConfigurationManager

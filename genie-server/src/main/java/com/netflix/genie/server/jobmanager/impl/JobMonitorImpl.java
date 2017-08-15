@@ -55,7 +55,7 @@ public class JobMonitorImpl implements JobMonitor {
 
     private static final Logger LOG = LoggerFactory.getLogger(JobMonitorImpl.class);
     // interval to check status, and update in database if needed
-    private static final int JOB_UPDATE_TIME_MS = 60000;
+    private static final int JOB_UPDATE_TIME_MS = 120000;
     // stdout filename
     private static final String STDOUT_FILENAME = "stdout";
     // stderr filename
