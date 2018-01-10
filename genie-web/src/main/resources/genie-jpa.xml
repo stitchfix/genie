@@ -49,12 +49,11 @@
     
     <jpa:repositories base-package="com.netflix.genie.server.repository.jpa"/>
     
-    <!-- Different data sources for different profiles -->
+    <!-- Different data sources for different profiles (NOTE: have prod and staging for our environments) -->
     <beans profile="dev">
         <jdbc:embedded-database id="dataSource" type="HSQL"/>
     </beans>
 
-    <!-- TODO: turn 'test' into a configuration for the staging env and figure out how to switch when we deploy to staging! -->
     <beans profile="test">
         <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
             <property name="driverClassName" value="org.apache.derby.jdbc.EmbeddedDriver" />
@@ -69,6 +68,27 @@
             <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
             <!-- Note: genie-prod is the DB in the prod VPC: -->
             <property name="url" value="jdbc:mysql://genie-prod.c8hjvnh4cuqj.us-east-1.rds.amazonaws.com:3306/genie2"/>
+            <property name="username" value="admin"/>
+            <property name="password" value="100millionfixes"/>
+
+            <property name="minIdle" value="5"/>
+            <property name="maxIdle" value="20"/>
+            <property name="maxTotal" value="40"/>
+            <property name="validationQuery" value="select 0;"/>
+            <property name="testOnBorrow" value="true"/>
+            <property name="testOnCreate" value="true"/>
+            <property name="testWhileIdle" value="true"/>
+            <property name="testOnReturn" value="true"/>
+            <property name="minEvictableIdleTimeMillis" value="60000"/>
+            <property name="timeBetweenEvictionRunsMillis" value="10000"/>
+        </bean>
+    </beans>
+
+    <beans profile="staging">
+        <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+            <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+            <!-- Note: genie-staging is the DB in the staging VPC: -->
+            <property name="url" value="jdbc:mysql://genie-staging.c8hjvnh4cuqj.us-east-1.rds.amazonaws.com:3306/genie2"/>
             <property name="username" value="admin"/>
             <property name="password" value="100millionfixes"/>
 
