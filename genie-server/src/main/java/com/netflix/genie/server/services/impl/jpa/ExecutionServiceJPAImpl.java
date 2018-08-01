@@ -357,7 +357,7 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
         // once. the assumption is that jobForwardThreshold < maxRunningJobs
         // (set in properties file)
         if (numRunningJobs >= jobForwardThreshold && !job.isForwarded()) {
-            LOG.info("Number of running jobs greater than forwarding threshold - trying to auto-forward");
+            LOG.warn("Number of running jobs greater than forwarding threshold - trying to auto-forward");
             final String idleHost = this.jobCountManager.getIdleInstance(idleHostThreshold);
             if (!idleHost.equals(NetUtil.getHostName())) {
                 job.setForwarded(true);
@@ -371,6 +371,7 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
         if (numRunningJobs >= maxRunningJobs) {
             // if we get here, job can't be forwarded to an idle
             // instance anymore and current node is overloaded
+            LOG.error("Number of running jobs on host is above max and can't find another host!  Returning HTTP 503.");
             throw new GenieServerUnavailableException(
                     "Number of running jobs greater than system limit ("
                             + maxRunningJobs
