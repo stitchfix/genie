@@ -137,12 +137,8 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
         final int maxSystemJobs = CONF.getInt("com.netflix.genie.server.max.system.jobs", 1000);
 
         if (this.jobCountManager.getNumRunningJobs() < maxSystemJobs) {
-            final Job forwardedJob = checkAbilityToRunOrForward(job);
-
-            if (forwardedJob != null) {
-                return forwardedJob;
-            }
-
+            // NOTE: disabling the forwarded job logic for good.  This doesn't work in our
+            // environment and we have queueing plus the logic to check for memory/disk
             // At this point we have established that the job can be run on this node.
             // Before running we validate the job and save it in the db if it passes validation.
             final Job savedJob = this.jobService.createJob(job);
@@ -323,6 +319,8 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
     /**
      * Check if we can run the job on this host or not.
      *
+     * Note that we don't call this currently in our environment.
+     *
      * @throws GenieException
      */
     private synchronized Job checkAbilityToRunOrForward(
@@ -331,13 +329,13 @@ public class ExecutionServiceJPAImpl implements ExecutionService {
         // synchronize until an entry is created and INIT-ed in DB
         // throttling related parameters
         final int maxRunningJobs = CONF.getInt(
-                "com.netflix.genie.server.max.running.jobs", 0);
+                "com.netflix.genie.server.max.running.jobs", 100);
         final int jobForwardThreshold = CONF.getInt(
-                "com.netflix.genie.server.forward.jobs.threshold", 0);
+                "com.netflix.genie.server.forward.jobs.threshold", 50);
         final int maxIdleHostThreshold = CONF.getInt(
-                "com.netflix.genie.server.max.idle.host.threshold", 0);
+                "com.netflix.genie.server.max.idle.host.threshold", 5);
         final int idleHostThresholdDelta = CONF.getInt(
-                "com.netflix.genie.server.idle.host.threshold.delta", 0);
+                "com.netflix.genie.server.idle.host.threshold.delta", 1);
 
         final int numRunningJobs = this.jobCountManager.getNumInstanceJobs();
         LOG.info("Number of running jobs: " + numRunningJobs);
